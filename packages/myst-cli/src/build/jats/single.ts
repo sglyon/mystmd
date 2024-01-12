@@ -29,6 +29,9 @@ export async function runJatsExport(
   const toc = tic();
   const { output, articles, sub_articles } = exportOptions;
   // At this point, export options are resolved to contain one-and-only-one article
+  if (articles.length > 1) {
+    throw new Error('When specifying a named output for export, you must list exactly one file.');
+  }
   const article = articles[0];
   if (!article) return { tempFolders: [] };
   if (clean) cleanOutput(session, output);
