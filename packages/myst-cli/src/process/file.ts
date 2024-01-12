@@ -33,11 +33,7 @@ function checkCache(cache: ISessionWithCache, content: string, file: string) {
  * @param file Markdown file to load
  * @param location location relative to project root
  */
-async function loadMarkdownFile(
-  cachingSession: ISessionWithCache,
-  file: string,
-  location: string,
-) {
+async function loadMarkdownFile(cachingSession: ISessionWithCache, file: string, location: string) {
   const content = fs.readFileSync(file).toString();
   const { sha256, mdast } = checkCache(cachingSession, content, file);
   if (mdast !== undefined) {
@@ -55,7 +51,6 @@ async function loadMarkdownFile(
   cachingSession.$setMdast(file, cacheItem);
   return cacheItem;
 }
-
 
 /**
  * Load a Jupyter notebook, parse the AST, and cache the result.
@@ -88,7 +83,6 @@ async function loadJupyterNotebookFile(
   cachingSession.$setMdast(file, cacheItem);
   return cacheItem;
 }
-
 
 /**
  * Load a LaTeX file, parse the AST, and cache the result.
@@ -135,6 +129,16 @@ async function loadLaTeXFile(
   return cacheItem;
 }
 
+/**
+ * Attempt to load a file into the current session. Unsupported files with
+ * issue a warning
+ *
+ * @param session session with logging
+ * @param file path to file to load
+ * @param projectPath path to project directory
+ * @param extension pre-computed file extension
+ * @param opts loading options
+ */
 export async function loadFile(
   session: ISession,
   file: string,
@@ -194,6 +198,13 @@ export async function loadFile(
   if (success) session.log.debug(toc(`loadFile: loaded ${file} in %s.`));
 }
 
+/**
+ * Find bibliography files in the given directory, loading them if required
+ *
+ * @param session session with logging
+ * @param dir directory to search
+ * @param load load bib files in addition to locating them
+ */
 export async function bibFilesInDir(session: ISession, dir: string, load = true) {
   const bibFiles = await Promise.all(
     fs.readdirSync(dir).map(async (f) => {
@@ -207,6 +218,12 @@ export async function bibFilesInDir(session: ISession, dir: string, load = true)
   return bibFiles.filter((f): f is string => Boolean(f));
 }
 
+/**
+ * Return the cached post-processed MDAST for the given file, or return undefined
+ *
+ * @param session session with logging
+ * @param file path to file
+ */
 export function selectFile(session: ISession, file: string): RendererData | undefined {
   const cache = castSession(session);
   if (!cache.$getMdast(file)) {
