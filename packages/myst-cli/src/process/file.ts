@@ -7,7 +7,7 @@ import { VFile } from 'vfile';
 import { RuleId, toText } from 'myst-common';
 import type { PageFrontmatter } from 'myst-frontmatter';
 import { SourceFileKind } from 'myst-spec-ext';
-import type { ISession, ISessionWithCache } from '../session/types.js';
+import type { ICacheItem, ISession, ISessionWithCache } from '../session/types.js';
 import { castSession } from '../session/cache.js';
 import { warnings, watch } from '../store/reducers.js';
 import type { RendererData } from '../transforms/types.js';
@@ -22,7 +22,117 @@ function checkCache(cache: ISessionWithCache, content: string, file: string) {
   cache.store.dispatch(watch.actions.markFileChanged({ path: file, sha256 }));
   const mdast = cache.$getMdast(file);
   const useCache = mdast?.pre && mdast.sha256 === sha256;
-  return { useCache, sha256 };
+  return { mdast: useCache ? mdast : undefined, sha256 };
+}
+
+/**
+ * Load a Markdown file, parse the AST, and cache the result.
+ * If the file is already cached, return the cache item.
+ *
+ * @param cachingSession session with logging and cache
+ * @param file Markdown file to load
+ * @param location location relative to project root
+ */
+async function loadMarkdownFile(
+  cachingSession: ISessionWithCache,
+  file: string,
+  location: string,
+) {
+  const content = fs.readFileSync(file).toString();
+  const { sha256, mdast } = checkCache(cachingSession, content, file);
+  if (mdast !== undefined) {
+    return mdast;
+  }
+  const cacheItem = {
+    sha256,
+    pre: {
+      kind: SourceFileKind.Article,
+      file,
+      location,
+      mdast: parseMyst(cachingSession, content, file),
+    },
+  };
+  cachingSession.$setMdast(file, cacheItem);
+  return cacheItem;
+}
+
+
+/**
+ * Load a Jupyter notebook, parse the AST, and cache the result.
+ * If the file is already cached, return the cache item.
+ *
+ * @param cachingSession session with logging and cache
+ * @param file Markdown file to load
+ * @param location location relative to project root
+ */
+async function loadJupyterNotebookFile(
+  cachingSession: ISessionWithCache,
+  file: string,
+  location: string,
+  opts?: { minifyMaxCharacters?: number },
+): Promise<ICacheItem> {
+  const content = fs.readFileSync(file).toString();
+  const { sha256, mdast } = checkCache(cachingSession, content, file);
+  if (mdast !== undefined) {
+    return mdast;
+  }
+  const cacheItem = {
+    sha256,
+    pre: {
+      kind: SourceFileKind.Notebook,
+      file,
+      location,
+      mdast: await processNotebook(cachingSession, file, content, opts),
+    },
+  };
+  cachingSession.$setMdast(file, cacheItem);
+  return cacheItem;
+}
+
+
+/**
+ * Load a LaTeX file, parse the AST, and cache the result.
+ * If the file is already cached, return the cache item.
+ *
+ * @param cachingSession session with logging and cache
+ * @param file Markdown file to load
+ * @param location location relative to project root
+ */
+async function loadLaTeXFile(
+  cachingSession: ISessionWithCache,
+  file: string,
+  location: string,
+): Promise<ICacheItem> {
+  const content = fs.readFileSync(file).toString();
+  const { sha256, mdast } = checkCache(cachingSession, content, file);
+  if (mdast !== undefined) {
+    return mdast;
+  }
+  const vfile = new VFile();
+  vfile.path = file;
+  const tex = new TexParser(content, vfile);
+  logMessagesFromVFile(cachingSession, vfile);
+  const frontmatter: PageFrontmatter = {
+    title: toText(tex.data.frontmatter.title as any),
+    short_title: toText(tex.data.frontmatter.short_title as any),
+    authors: tex.data.frontmatter.authors,
+    // TODO: affiliations: tex.data.frontmatter.affiliations,
+    keywords: tex.data.frontmatter.keywords,
+    math: tex.data.macros,
+    bibliography: tex.data.bibliography,
+  };
+  const cacheItem = {
+    sha256,
+    pre: {
+      kind: SourceFileKind.Article,
+      file,
+      mdast: tex.ast as any,
+      location,
+      frontmatter,
+    },
+  };
+  cachingSession.$setMdast(file, cacheItem);
+  return cacheItem;
 }
 
 export async function loadFile(
@@ -49,59 +159,20 @@ export async function loadFile(
     const ext = extension || path.extname(file).toLowerCase();
     switch (ext) {
       case '.md': {
-        const content = fs.readFileSync(file).toString();
-        const { sha256, useCache } = checkCache(cache, content, file);
-        if (useCache) break;
-        const mdast = parseMyst(session, content, file);
-        cache.$setMdast(file, {
-          sha256,
-          pre: { kind: SourceFileKind.Article, file, location, mdast },
-        });
+        await loadMarkdownFile(cache, file, location);
         break;
       }
       case '.ipynb': {
-        const content = fs.readFileSync(file).toString();
-        const { sha256, useCache } = checkCache(cache, content, file);
-        if (useCache) break;
-        const mdast = await processNotebook(cache, file, content, opts);
-        cache.$setMdast(file, {
-          sha256,
-          pre: { kind: SourceFileKind.Notebook, file, location, mdast },
-        });
+        await loadJupyterNotebookFile(cache, file, location, opts);
+        break;
+      }
+      case '.tex': {
+        await loadLaTeXFile(cache, file, location);
         break;
       }
       case '.bib': {
         const renderer = await loadCitations(session, file);
         cache.$citationRenderers[file] = renderer;
-        break;
-      }
-      case '.tex': {
-        const content = fs.readFileSync(file).toString();
-        const { sha256, useCache } = checkCache(cache, content, file);
-        if (useCache) break;
-        const vfile = new VFile();
-        vfile.path = file;
-        const tex = new TexParser(content, vfile);
-        logMessagesFromVFile(session, vfile);
-        const frontmatter: PageFrontmatter = {
-          title: toText(tex.data.frontmatter.title as any),
-          short_title: toText(tex.data.frontmatter.short_title as any),
-          authors: tex.data.frontmatter.authors,
-          // TODO: affiliations: tex.data.frontmatter.affiliations,
-          keywords: tex.data.frontmatter.keywords,
-          math: tex.data.macros,
-          bibliography: tex.data.bibliography,
-        };
-        cache.$setMdast(file, {
-          sha256,
-          pre: {
-            kind: SourceFileKind.Article,
-            file,
-            mdast: tex.ast as any,
-            location,
-            frontmatter,
-          },
-        });
         break;
       }
       default:

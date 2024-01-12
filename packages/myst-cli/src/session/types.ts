@@ -26,6 +26,8 @@ export type ISession = {
   getAllWarnings(ruleId: RuleId): (BuildWarning & { file: string })[];
 };
 
+export type ICacheItem = { sha256?: string; pre: PreRendererData; post?: RendererData };
+
 export type ISessionWithCache = ISession & {
   $citationRenderers: Record<string, CitationRenderer>; // keyed on path
   $doiRenderers: Record<string, SingleCitationRenderer>; // keyed on doi
@@ -34,12 +36,7 @@ export type ISessionWithCache = ISession & {
   $mdast: Record<string, { sha256?: string; pre: PreRendererData; post?: RendererData }>; // keyed on path
   $outputs: MinifiedContentCache;
   /** Method to get $mdast value with normalized path */
-  $getMdast(
-    file: string,
-  ): { sha256?: string; pre: PreRendererData; post?: RendererData } | undefined;
+  $getMdast(file: string): ICacheItem | undefined;
   /** Method to set $mdast value with normalized path */
-  $setMdast(
-    file: string,
-    data: { sha256?: string; pre: PreRendererData; post?: RendererData },
-  ): void;
+  $setMdast(file: string, data: ICacheItem): void;
 };
