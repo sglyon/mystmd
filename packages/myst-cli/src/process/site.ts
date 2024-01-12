@@ -81,7 +81,9 @@ export async function addProjectReferencesToObjectsInv(
   inv: Inventory,
   opts: { projectPath: string },
 ) {
-  const { pages } = await loadProject(session, opts.projectPath);
+  const pages = filterPages(
+    await loadProjectFromDisk(session, opts.projectPath, { warnOnNoConfig: true }),
+  );
   const pageReferenceStates = selectPageReferenceStates(session, pages);
   pageReferenceStates.forEach((page) => {
     const { title } = selectors.selectFileInfo(session.store.getState(), page.file);
@@ -105,20 +107,6 @@ export async function addProjectReferencesToObjectsInv(
     });
   });
   return inv;
-}
-
-export async function loadProject(
-  session: ISession,
-  projectPath: string,
-  opts?: { writeToc?: boolean; reloadProject?: boolean },
-) {
-  const project = await loadProjectFromDisk(session, projectPath, {
-    warnOnNoConfig: true,
-    ...opts,
-  });
-  // Load the citations first, or else they are loaded in each call below
-  const pages = filterPages(project);
-  return { project, pages };
 }
 
 export function selectPageReferenceStates(session: ISession, pages: { file: string }[]) {
@@ -201,7 +189,8 @@ export async function fastProcessFile(
 ) {
   const toc = tic();
   await loadFile(session, file, projectPath);
-  const { project, pages } = await loadProject(session, projectPath);
+  const project = await loadProjectFromDisk(session, projectPath, {warnOnNoConfig: true});
+  const pages = filterPages(project);
   await transformMdast(session, {
     file,
     imageExtensions: WEB_IMAGE_EXTENSIONS,
@@ -257,10 +246,12 @@ export async function processProject(
     if (siteProject.remote) log.error(`Remote path not supported${slugSuffix}`);
     throw Error('Unable to process project');
   }
-  const { project, pages } = await loadProject(session, siteProject.path, {
+  const project = await loadProjectFromDisk(session, siteProject.path, {
+    warnOnNoConfig: true,
     writeToc: writeFiles && writeToc,
     reloadProject,
   });
+  const pages = filterPages(project);
   if (!watchMode) {
     await Promise.all([
       // Load all citations (.bib)

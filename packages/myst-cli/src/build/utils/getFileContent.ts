@@ -6,9 +6,10 @@ import { combineProjectCitationRenderers } from '../../process/citations.js';
 import { loadFile, selectFile } from '../../process/file.js';
 import { loadIntersphinx } from '../../process/intersphinx.js';
 import { postProcessMdast, transformMdast } from '../../process/mdast.js';
-import { loadProject, selectPageReferenceStates } from '../../process/site.js';
+import { selectPageReferenceStates } from '../../process/site.js';
 import type { ISession } from '../../session/types.js';
 import type { ImageExtensions } from '../../utils/resolveExtension.js';
+import { filterPages, loadProjectFromDisk } from '../../project/index.js';
 
 export async function getFileContent(
   session: ISession,
@@ -26,7 +27,8 @@ export async function getFileContent(
   const toc = tic();
   files = files.map((file) => resolve(file));
   projectPath = projectPath ?? resolve('.');
-  const { project, pages } = await loadProject(session, projectPath);
+  const project = await loadProjectFromDisk(session, projectPath, { warnOnNoConfig: true });
+  const pages = filterPages(project);
   const projectFiles = pages.map((page) => page.file);
   const allFiles = [...new Set([...files, ...projectFiles])];
   await Promise.all([
