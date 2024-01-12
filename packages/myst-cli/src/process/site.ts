@@ -205,7 +205,7 @@ export async function fastProcessFile(
 ) {
   const toc = tic();
   await loadFile(session, file, projectPath);
-  const project = await loadProjectFromDisk(session, projectPath, {warnOnNoConfig: true});
+  const project = await loadProjectFromDisk(session, projectPath, { warnOnNoConfig: true });
   const pages = filterPages(project);
   await transformMdast(session, {
     file,
