@@ -79,16 +79,6 @@ const LINKS_SELECTOR = 'link,card,linkBlock';
 
 const pluginUtils: PluginUtils = { select, selectAll };
 
-const htmlHandlers = {
-  comment(h: any, node: any) {
-    // Prevents HTML comments from showing up as text in web
-    // TODO: Remove once this is landed in myst-parser
-    const result = h(node, 'comment');
-    (result as any).value = node.value;
-    return result;
-  },
-};
-
 export type PageReferenceStates = {
   state: ReferenceState;
   file: string;
@@ -175,7 +165,7 @@ export async function transformMdast(
   const pipe = unified()
     .use(reconstructHtmlPlugin) // We need to group and link the HTML first
     .use(inlineExpressionsPlugin) // Happens before math and images!
-    .use(htmlPlugin, { htmlHandlers }) // Some of the HTML plugins need to operate on the transformed html, e.g. figure caption transforms
+    .use(htmlPlugin) // Some of the HTML plugins need to operate on the transformed html, e.g. figure caption transforms
     .use(basicTransformationsPlugin, {
       parser: (content: string) => parseMyst(session, content, file),
     })
