@@ -1,5 +1,19 @@
 # myst-transforms
 
+## 1.2.0
+
+### Minor Changes
+
+- d2e6e780: Sort (frontmatter) abbreviations definitions by length
+
+### Patch Changes
+
+- ffc1061f: Allow enumeration to start at a different number
+- aa335d7: Gather page frontmatter on load
+- aa335d7: Add heading depth transform to normalize headings
+  - myst-common@1.1.22
+  - myst-spec-ext@1.1.22
+
 ## 1.1.19
 
 ### Patch Changes

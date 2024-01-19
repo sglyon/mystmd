@@ -1,5 +1,13 @@
 # myst-frontmatter
 
+## 1.1.22
+
+### Patch Changes
+
+- 9178a214: Allow typst to have multiple pages for export (e.g. as a book)
+- ffc1061f: Allow enumeration to start at a different number
+- aa335d7: Gather page frontmatter on load
+
 ## 1.1.21
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # jtex
 
+## 1.0.13
+
+### Patch Changes
+
+- 9178a214: Allow typst to have multiple pages for export (e.g. as a book)
+- Updated dependencies [9178a214]
+- Updated dependencies [ffc1061f]
+- Updated dependencies [aa335d7]
+  - myst-frontmatter@1.1.22
+  - myst-common@1.1.22
+
 ## 1.0.12
 
 ### Patch Changes
