@@ -56,10 +56,10 @@ export async function loadFile(
         const { sha256, useCache } = checkCache(cache, content, file);
         if (useCache) break;
         const mdast = parseMyst(session, content, file);
-        const frontmatter = getPageFrontmatter(session, mdast, vfile);
+        const { frontmatter, identifiers } = getPageFrontmatter(session, mdast, vfile);
         cache.$setMdast(file, {
           sha256,
-          pre: { kind: SourceFileKind.Article, file, location, mdast, frontmatter },
+          pre: { kind: SourceFileKind.Article, file, location, mdast, frontmatter, identifiers },
         });
         break;
       }
@@ -68,10 +68,10 @@ export async function loadFile(
         const { sha256, useCache } = checkCache(cache, content, file);
         if (useCache) break;
         const mdast = await processNotebook(cache, file, content, opts);
-        const frontmatter = getPageFrontmatter(session, mdast, vfile);
+        const { frontmatter, identifiers } = getPageFrontmatter(session, mdast, vfile);
         cache.$setMdast(file, {
           sha256,
-          pre: { kind: SourceFileKind.Notebook, file, location, mdast, frontmatter },
+          pre: { kind: SourceFileKind.Notebook, file, location, mdast, frontmatter, identifiers },
         });
         break;
       }
